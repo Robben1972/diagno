@@ -1,5 +1,5 @@
 ```
-git clone diagno.git
+git clone git@github.com:Robben1972/diagno.git
 cd diagno
 ```
 
