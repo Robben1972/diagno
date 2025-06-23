@@ -20,3 +20,5 @@ python3 manage.py createsuperuser
 ```
 python3 manage.py runserver
 ```
+
+open localhost:8000/api/schema/swagger-ui
