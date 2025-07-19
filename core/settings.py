@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-6-b4be2t&g@b_!%4a*y*&_q6m@yh+gsjqzzj5kpz%!wmzp=-jh
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['91.99.232.34']
+ALLOWED_HOSTS = ['api.diagno.uz']
 
 
 # Application definition
