@@ -277,7 +277,7 @@ class ChatListView(APIView):
                         doc_content = "\n".join(paragraph.text for paragraph in doc.paragraphs)
                         file_text = doc_content
             
-            from .ai import generate_answer, generate_name
+            from .service.ai import generate_answer, generate_name
             from PIL import Image
             answer = generate_answer(prompt, image_file, file_file)
             if not answer:
@@ -356,7 +356,7 @@ class ChatDetailView(APIView):
                 "Please recommend the most suitable doctor(s) for this user and answer the question."
             )
 
-            from .ai import generate_answer, generate_name
+            from .service.ai import generate_answer, generate_name
             answer = generate_answer(prompt, image_file, file_file)
             new_history = f"{chat.history}\nUser: {message or '[file/image]'}\nAI: {answer}"
             serializer.validated_data['history'] = new_history

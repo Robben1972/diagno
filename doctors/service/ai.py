@@ -1,17 +1,23 @@
-import google.generativeai as genai
+import openai
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
-import os
-import magic
 from PIL import Image
+import os
 
-GEMINI_API_KEY="AIzaSyBH-26V-1Jvsl2VwI6AcRwOtC3ZKWv1rD4"
-genai.configure(api_key=GEMINI_API_KEY)
+OPENAI_API_KEY = "your-openai-api-key-here" 
+openai.api_key = OPENAI_API_KEY
 
 def generate_name(message: str) -> str:
-    model = genai.GenerativeModel(model_name='gemini-2.0-flash')
-    response = model.generate_content(f"Give the small title for this message in one line:\n {message}")
-    return response.text.replace("\n", "").replace("\r", "").replace("*", "")
+    client = openai.OpenAI(api_key=OPENAI_API_KEY)
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant that generates concise titles."},
+            {"role": "user", "content": f"Give the small title for this message in one line:\n {message}"}
+        ],
+        max_tokens=50
+    )
+    return response.choices[0].message.content.replace("\n", "").replace("\r", "").replace("*", "")
 
 def generate_rag_prompt(query, context, history=""):
     escaped_context = context.replace("'", "").replace('"', "").replace("\n", " ")
@@ -44,8 +50,8 @@ def get_relevant_context_from_db(query):
     return context
 
 def generate_answer(prompt, image_path=None, file_path=None):
-    model = genai.GenerativeModel(model_name='gemini-2.0-flash')
-    content = [prompt]
+    client = openai.OpenAI(api_key=OPENAI_API_KEY)
+    content = [{"role": "user", "content": prompt}]
     
     if image_path:
         try:
@@ -53,19 +59,21 @@ def generate_answer(prompt, image_path=None, file_path=None):
                 img = Image.open(image_path)
             else:
                 img = Image.open(str(image_path))
-            content.append(img)
+            # OpenAI API doesn't directly support PIL images; convert to base64 or skip for now
+            print("Image processing not implemented for OpenAI API in this version.")
         except Exception as e:
             print(f"Error processing image: {e}")
+    
     if file_path:
         try:
             name = getattr(file_path, 'name', str(file_path))
             if name.endswith('.txt'):
                 if hasattr(file_path, 'read'):
                     file_path.seek(0)
-                    content[0] += 'Text extracted from user\'s file: ' + (file_path.read().decode('utf-8') if hasattr(file_path, 'decode') else file_path.read())
+                    content[0]["content"] += 'Text extracted from user\'s file: ' + (file_path.read().decode('utf-8') if hasattr(file_path, 'decode') else file_path.read())
                 else:
                     with open(file_path, 'r', encoding='utf-8') as f:
-                        content[0] += 'Text extracted from user\'s file: ' +  (f.read())
+                        content[0]["content"] += 'Text extracted from user\'s file: ' + f.read()
             elif name.endswith('.pdf'):
                 from PyPDF2 import PdfReader
                 if hasattr(file_path, 'read'):
@@ -75,7 +83,7 @@ def generate_answer(prompt, image_path=None, file_path=None):
                     with open(file_path, 'rb') as f:
                         reader = PdfReader(f)
                 pdf_content = "\n".join(page.extract_text() for page in reader.pages if page.extract_text())
-                content.append(pdf_content)
+                content.append({"role": "user", "content": pdf_content})
             elif name.endswith('.docx'):
                 from docx import Document
                 if hasattr(file_path, 'read'):
@@ -84,14 +92,22 @@ def generate_answer(prompt, image_path=None, file_path=None):
                 else:
                     doc = Document(file_path)
                 doc_content = "\n".join(paragraph.text for paragraph in doc.paragraphs)
-                content.append(doc_content)
+                content.append({"role": "user", "content": doc_content})
             else:
                 return None
         except Exception as e:
             print(f"Error processing file: {e}")
     
-    answer = model.generate_content(content)
-    return answer.text
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a helpful and informative bot."},
+            *content
+        ],
+        max_tokens=1000
+    )
+    return response.choices[0].message.content
+
 def get_answer(prompt: str, history: str, image_path=None, file_path=None):
     context = get_relevant_context_from_db(prompt)
     rag_prompt = generate_rag_prompt(query=prompt, context=context, history=history)
