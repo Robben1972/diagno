@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Hospital, Doctor, Chat
+from .models import Hospital, Doctor, Chat, Message
 
 class HospitalSerializer(serializers.ModelSerializer):
     class Meta:
@@ -11,30 +11,44 @@ class DoctorSerializer(serializers.ModelSerializer):
         model = Doctor
         fields = ['id', 'name', 'hospital', 'field', 'description']
 
-class ChatSerializer(serializers.ModelSerializer):
+class MessageSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False, allow_null=True)
     file = serializers.FileField(required=False, allow_null=True)
+
+    class Meta:
+        model = Message
+        fields = ['id', 'content', 'image', 'file', 'is_from_user', 'created_at']
+
+class ChatSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(required=False, allow_null=True, write_only=True)
+    file = serializers.FileField(required=False, allow_null=True, write_only=True)
     message = serializers.CharField(required=False, write_only=True)
     latitude = serializers.FloatField(write_only=True, required=True)
     longitude = serializers.FloatField(write_only=True, required=True)
     user_id = serializers.CharField(required=True)
+    messages = MessageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Chat
         fields = [
-            'id', 'user_id', 'history', 'created_at', 'updated_at',
-            'image', 'file', 'message', 'latitude', 'longitude'
+            'id', 'user_id', 'created_at', 'updated_at',
+            'image', 'file', 'message', 'latitude', 'longitude', 'messages'
         ]
 
     def create(self, validated_data):
-        # Only pop fields not in the model
-        validated_data.pop('message', None)
-        validated_data.pop('title', None)
-        # Do NOT pop latitude and longitude
-        return super().create(validated_data)
-
-    def update(self, instance, validated_data):
-        validated_data.pop('message', None)
-        validated_data.pop('title', None)
-        # Do NOT pop latitude and longitude
-        return super().update(instance, validated_data)
+        message_content = validated_data.pop('message', None)
+        image = validated_data.pop('image', None)
+        file = validated_data.pop('file', None)
+        
+        chat = Chat.objects.create(**validated_data)
+        
+        if message_content or image or file:
+            Message.objects.create(
+                chat=chat,
+                content=message_content,
+                image=image,
+                file=file,
+                is_from_user=True
+            )
+        
+        return chat

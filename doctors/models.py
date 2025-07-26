@@ -19,13 +19,21 @@ class Doctor(models.Model):
 
 class Chat(models.Model):
     user_id = models.CharField(max_length=100)
-    history = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     longitude = models.FloatField()
     latitude = models.FloatField()
-    image = models.ImageField(upload_to='chat_images/', null=True, blank=True)
-    file = models.FileField(upload_to='chat_files/', null=True, blank=True)
 
     def __str__(self):
         return f"Chat {self.id} for User {self.user_id}"
+
+class Message(models.Model):
+    chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name='messages')
+    content = models.TextField(blank=True, null=True)
+    image = models.ImageField(upload_to='chat_images/', null=True, blank=True)
+    file = models.FileField(upload_to='chat_files/', null=True, blank=True)
+    is_from_user = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Message {self.id} in Chat {self.chat.id}"

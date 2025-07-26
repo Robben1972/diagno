@@ -1,12 +1,12 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Hospital, Doctor, Chat
-from .serializers import HospitalSerializer, DoctorSerializer, ChatSerializer
+from .models import Hospital, Doctor, Chat, Message
+from .serializers import HospitalSerializer, DoctorSerializer, ChatSerializer, MessageSerializer
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from math import radians, sin, cos, sqrt, atan2
 from rest_framework.parsers import MultiPartParser, FormParser
-from drf_spectacular.utils import OpenApiRequest, OpenApiExample, OpenApiTypes
+from drf_spectacular.utils import OpenApiExample
 
 
 
@@ -167,7 +167,7 @@ class ChatListView(APIView):
         user_id = request.query_params.get('user_id')
         if not user_id:
             return Response({"error": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
-        chats = Chat.objects.filter(user_id=user_id)
+        chats = Chat.objects.filter(user_id=user_id).prefetch_related('messages')
         serializer = ChatSerializer(chats, many=True)
         return Response(serializer.data)
 
@@ -180,8 +180,8 @@ class ChatListView(APIView):
                     'latitude': {'type': 'number'},
                     'longitude': {'type': 'number'},
                     'message': {'type': 'string', 'nullable': True},
-                    'image': {'type': 'string', 'format': 'binary', 'nullable': True},  # File field
-                    'file': {'type': 'string', 'format': 'binary', 'nullable': True},   # File field
+                    'image': {'type': 'string', 'format': 'binary', 'nullable': True},
+                    'file': {'type': 'string', 'format': 'binary', 'nullable': True},
                 },
                 'required': ['user_id', 'latitude', 'longitude']
             }
@@ -194,8 +194,8 @@ class ChatListView(APIView):
                     'latitude': 41.3,
                     'longitude': 69.2,
                     'message': 'I have a rash',
-                    'image': None,  # Placeholder for file upload
-                    'file': None    # Placeholder for file upload
+                    'image': None,
+                    'file': None
                 },
                 request_only=True,
                 media_type='multipart/form-data'
@@ -220,7 +220,6 @@ class ChatListView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Pass file-like objects directly
             image_file = image if image else None
             file_file = file if file else None
 
@@ -230,7 +229,6 @@ class ChatListView(APIView):
                 for doc in doctors
             ])
 
-            # Find nearest hospital
             nearest_hospital = None
             min_distance = float('inf')
             for hospital in Hospital.objects.all():
@@ -239,53 +237,55 @@ class ChatListView(APIView):
                     min_distance = dist
                     nearest_hospital = hospital
 
-            # Compose prompt for AI
             prompt = (
                 f"User message: {message}\n"
                 f"Doctors available:\n{doctor_info}\n"
                 f"Nearest hospital: {nearest_hospital.name if nearest_hospital else 'N/A'}\n"
                 "Please recommend the most suitable doctor(s) for this user and answer the question."
             )
+
             file_text = None
             if file_file:
-                    name = getattr(file_file, 'name', str(file_file))
-                    if name.endswith('.txt'):
-                        if hasattr(file_file, 'read'):
-                            file_file.seek(0)
-                            file_bytes = file_file.read()
-                            file_text = "Text extracted from user's file: " + (file_bytes.decode('utf-8') if isinstance(file_bytes, bytes) else file_bytes)
-                        else:
-                            with open(file_file, 'r', encoding='utf-8') as f:
-                                file_text =  'Text extracted from user\'s file: ' + f.read()
-                    elif name.endswith('.pdf'):
-                        from PyPDF2 import PdfReader
-                        if hasattr(file_file, 'read'):
-                            file_file.seek(0)
-                            reader = PdfReader(file_file)
-                        else:
-                            with open(file_file, 'rb') as f:
-                                reader = PdfReader(f)
-                        pdf_content = "\n".join(page.extract_text() for page in reader.pages if page.extract_text())
-                        file_text = pdf_content
-                    elif name.endswith('.docx'):
-                        from docx import Document
-                        if hasattr(file_file, 'read'):
-                            file_file.seek(0)
-                            doc = Document(file_file)
-                        else:
-                            doc = Document(file_file)
-                        doc_content = "\n".join(paragraph.text for paragraph in doc.paragraphs)
-                        file_text = doc_content
-            
-            from .service.ai import generate_answer, generate_name
-            from PIL import Image
-            answer = generate_answer(prompt, image_file, file_file)
+                name = getattr(file_file, 'name', str(file_file))
+                if name.endswith('.txt'):
+                    if hasattr(file_file, 'read'):
+                        file_file.seek(0)
+                        file_bytes = file_file.read()
+                        file_text = "Text extracted from user's file: " + (file_bytes.decode('utf-8') if isinstance(file_bytes, bytes) else file_bytes)
+                    else:
+                        with open(file_file, 'r', encoding='utf-8') as f:
+                            file_text = 'Text extracted from user\'s file: ' + f.read()
+                elif name.endswith('.pdf'):
+                    from PyPDF2 import PdfReader
+                    if hasattr(file_file, 'read'):
+                        file_file.seek(0)
+                        reader = PdfReader(file_file)
+                    else:
+                        with open(file_file, 'rb') as f:
+                            reader = PdfReader(f)
+                    pdf_content = "\n".join(page.extract_text() for page in reader.pages if page.extract_text())
+                    file_text = pdf_content
+                elif name.endswith('.docx'):
+                    from docx import Document
+                    if hasattr(file_file, 'read'):
+                        file_file.seek(0)
+                        doc = Document(file_file)
+                    else:
+                        doc = Document(file_file)
+                    doc_content = "\n".join(paragraph.text for paragraph in doc.paragraphs)
+                    file_text = doc_content
+
+            from .service.ai import generate_answer
+            answer = generate_answer(prompt, image_file, file_text)
             if not answer:
                 return Response({"error": "AI could not generate an answer."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            history = f"User: {message} {Image.open(image_file) if image_file else ''} {file_text if file_text else ''}\nAI: {answer}"
-            serializer.validated_data['history'] = history
-            serializer.validated_data['title'] = generate_name(message or '[file/image]')
-            serializer.save()
+
+            chat = serializer.save()
+            Message.objects.create(
+                chat=chat,
+                content=answer,
+                is_from_user=False
+            )
             return Response({"message": answer}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -307,8 +307,8 @@ class ChatDetailView(APIView):
                 'type': 'object',
                 'properties': {
                     'message': {'type': 'string', 'nullable': True},
-                    'image': {'type': 'string', 'format': 'binary', 'nullable': True},  # File field
-                    'file': {'type': 'string', 'format': 'binary', 'nullable': True},   # File field
+                    'image': {'type': 'string', 'format': 'binary', 'nullable': True},
+                    'file': {'type': 'string', 'format': 'binary', 'nullable': True},
                 }
             }
         },
@@ -317,8 +317,8 @@ class ChatDetailView(APIView):
                 'Chat Update Example',
                 value={
                     'message': 'Here is an updated message',
-                    'image': None,  # Placeholder for file upload
-                    'file': None    # Placeholder for file upload
+                    'image': None,
+                    'file': None
                 },
                 request_only=True,
                 media_type='multipart/form-data'
@@ -335,10 +335,15 @@ class ChatDetailView(APIView):
         serializer = ChatSerializer(chat, data=request.data, partial=True)
         if serializer.is_valid():
             message = serializer.validated_data.get('message')
-            image = serializer.validated_data.get('image', chat.image)
-            file = serializer.validated_data.get('file', chat.file)
+            image = serializer.validated_data.get('image')
+            file = serializer.validated_data.get('file')
 
-            # Pass file-like objects directly
+            if not (message or image or file):
+                return Response(
+                    {"error": "At least one of message, image, or file must be provided."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             image_file = image if image else None
             file_file = file if file else None
 
@@ -348,19 +353,66 @@ class ChatDetailView(APIView):
                 for doc in doctors
             ])
 
-            # Compose prompt for AI with history
+            history = "\n".join([
+                f"{'User' if msg.is_from_user else 'AI'}: {msg.content or '[file/image]'}"
+                for msg in chat.messages.all()
+            ])
+
             prompt = (
-                f"Previous chat history:\n{chat.history}\n"
+                f"Previous chat history:\n{history}\n"
                 f"New user message: {message or '[file/image]'}\n"
                 f"Doctors available:\n{doctor_info}\n"
                 "Please recommend the most suitable doctor(s) for this user and answer the question."
             )
 
-            from .service.ai import generate_answer, generate_name
-            answer = generate_answer(prompt, image_file, file_file)
-            new_history = f"{chat.history}\nUser: {message or '[file/image]'}\nAI: {answer}"
-            serializer.validated_data['history'] = new_history
-            serializer.validated_data['title'] = generate_name(message or '[file/image]')
+            file_text = None
+            if file_file:
+                name = getattr(file_file, 'name', str(file_file))
+                if name.endswith('.txt'):
+                    if hasattr(file_file, 'read'):
+                        file_file.seek(0)
+                        file_bytes = file_file.read()
+                        file_text = "Text extracted from user's file: " + (file_bytes.decode('utf-8') if isinstance(file_bytes, bytes) else file_bytes)
+                    else:
+                        with open(file_file, 'r', encoding='utf-8') as f:
+                            file_text = 'Text extracted from user\'s file: ' + f.read()
+                elif name.endswith('.pdf'):
+                    from PyPDF2 import PdfReader
+                    if hasattr(file_file, 'read'):
+                        file_file.seek(0)
+                        reader = PdfReader(file_file)
+                    else:
+                        with open(file_file, 'rb') as f:
+                            reader = PdfReader(f)
+                    pdf_content = "\n".join(page.extract_text() for page in reader.pages if page.extract_text())
+                    file_text = pdf_content
+                elif name.endswith('.docx'):
+                    from docx import Document
+                    if hasattr(file_file, 'read'):
+                        file_file.seek(0)
+                        doc = Document(file_file)
+                    else:
+                        doc = Document(file_file)
+                    doc_content = "\n".join(paragraph.text for paragraph in doc.paragraphs)
+                    file_text = doc_content
+
+            from .service.ai import generate_answer
+            answer = generate_answer(prompt, image_file, file_text)
+            if not answer:
+                return Response({"error": "AI could not generate an answer."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            Message.objects.create(
+                chat=chat,
+                content=message,
+                image=image,
+                file=file,
+                is_from_user=True
+            )
+            Message.objects.create(
+                chat=chat,
+                content=answer,
+                is_from_user=False
+            )
             serializer.save()
             return Response({"message": answer})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
