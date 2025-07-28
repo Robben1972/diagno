@@ -4,4 +4,3 @@ sqlite.db
 *.sqlite3
 *.pyc
 __pycache__/*.pyc
-*.pyc
