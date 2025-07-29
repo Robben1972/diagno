@@ -7,8 +7,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from math import radians, sin, cos, sqrt, atan2
 from rest_framework.parsers import MultiPartParser, FormParser
 from drf_spectacular.utils import OpenApiExample
-
-
+import re
 
 def calculate_distance(lat1, lon1, lat2, lon2):
     R = 6371  # Earth's radius in kilometers
@@ -66,54 +65,11 @@ class HospitalDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class DoctorListView(APIView):
-    @extend_schema(
-        responses=DoctorSerializer(many=True),
-        parameters=[
-            OpenApiParameter(name='field', description='Medical field (e.g., Dermatologist)', required=False, type=str),
-            OpenApiParameter(name='latitude', description='Patient latitude', required=True, type=float),
-            OpenApiParameter(name='longitude', description='Patient longitude', required=True, type=float),
-        ]
-    )
+    @extend_schema(responses=DoctorSerializer(many=True))
     def get(self, request):
-        field = request.query_params.get('field')
-        latitude = request.query_params.get('latitude')
-        longitude = request.query_params.get('longitude')
-
-        # Validate latitude and longitude
-        try:
-            latitude = float(latitude)
-            longitude = float(longitude)
-            if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
-                return Response({"error": "Invalid latitude or longitude values"}, status=status.HTTP_400_BAD_REQUEST)
-        except (TypeError, ValueError):
-            return Response({"error": "Latitude and longitude are required and must be valid numbers"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Filter doctors by field if provided
-        if field:
-            doctors = Doctor.objects.filter(field__iexact=field)
-        else:
-            doctors = Doctor.objects.all()
-
-        if not doctors.exists():
-            return Response({"message": "We don't have any doctors matching your request in our database"}, status=status.HTTP_404_NOT_FOUND)
-
-        # Calculate distances and prepare response
-        doctor_list = []
-        for doctor in doctors:
-            distance = calculate_distance(latitude, longitude, doctor.hospital.latitude, doctor.hospital.longitude)
-            doctor_data = DoctorSerializer(doctor).data
-            doctor_data['hospital_distance_km'] = round(distance, 2)
-            doctor_data['hospital_location'] = {
-                'name': doctor.hospital.name,
-                'latitude': doctor.hospital.latitude,
-                'longitude': doctor.hospital.longitude
-            }
-            doctor_list.append(doctor_data)
-
-        # Sort by distance
-        doctor_list.sort(key=lambda x: x['hospital_distance_km'])
-
-        return Response(doctor_list)
+        doctors = Doctor.objects.all()
+        serializer = DoctorSerializer(doctors, many=True)
+        return Response(serializer.data)
 
     @extend_schema(request=DoctorSerializer, responses=DoctorSerializer)
     def post(self, request):
@@ -225,7 +181,7 @@ class ChatListView(APIView):
 
             doctors = Doctor.objects.all()
             doctor_info = "\n".join([
-                f"{doc.name} ({doc.field}) at {doc.hospital.name} [{doc.hospital.latitude}, {doc.hospital.longitude}]"
+                f"{doc.id}. {doc.name} ({doc.field}) at {doc.hospital.name} [{doc.hospital.latitude}, {doc.hospital.longitude}]"
                 for doc in doctors
             ])
 
@@ -241,7 +197,8 @@ class ChatListView(APIView):
                 f"User message: {message}\n"
                 f"Doctors available:\n{doctor_info}\n"
                 f"Nearest hospital: {nearest_hospital.name if nearest_hospital else 'N/A'}\n"
-                "Please recommend the most suitable doctor(s) for this user and answer the question."
+                "Please recommend the most suitable doctor(s) for this user and answer the question. "
+                "Include a list of recommended doctor IDs at the end of your response in the format: [1, 2, 3] or []"
             )
 
             file_text = None
@@ -280,13 +237,21 @@ class ChatListView(APIView):
             if not answer:
                 return Response({"error": "AI could not generate an answer."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+            # Extract doctor IDs from the AI response
+            doctor_ids = []
+            match = re.search(r'\[([\d,\s]*)\]', answer)
+            if match:
+                doctor_ids_str = match.group(1)
+                if doctor_ids_str:
+                    doctor_ids = [int(id.strip()) for id in doctor_ids_str.split(',') if id.strip().isdigit()]
+
             chat = serializer.save()
             Message.objects.create(
                 chat=chat,
                 content=answer,
                 is_from_user=False
             )
-            return Response({"message": answer}, status=status.HTTP_201_CREATED)
+            return Response({"message": ''.join(answer.split('\n')[:-2]), "doctors": doctor_ids}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ChatDetailView(APIView):
@@ -349,7 +314,7 @@ class ChatDetailView(APIView):
 
             doctors = Doctor.objects.all()
             doctor_info = "\n".join([
-                f"{doc.name} ({doc.field}) at {doc.hospital.name} [{doc.hospital.latitude}, {doc.hospital.longitude}]"
+                f"{doc.id}. {doc.name} ({doc.field}) at {doc.hospital.name} [{doc.hospital.latitude}, {doc.hospital.longitude}]"
                 for doc in doctors
             ])
 
@@ -362,7 +327,8 @@ class ChatDetailView(APIView):
                 f"Previous chat history:\n{history}\n"
                 f"New user message: {message or '[file/image]'}\n"
                 f"Doctors available:\n{doctor_info}\n"
-                "Please recommend the most suitable doctor(s) for this user and answer the question."
+                "Please recommend the most suitable doctor(s) for this user and answer the question. "
+                "Include a list of recommended doctor IDs at the end of your response in the format: [1, 2, 3] or []"
             )
 
             file_text = None
@@ -401,6 +367,14 @@ class ChatDetailView(APIView):
             if not answer:
                 return Response({"error": "AI could not generate an answer."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+            # Extract doctor IDs from the AI response
+            doctor_ids = []
+            match = re.search(r'\[([\d,\s]*)\]', answer)
+            if match:
+                doctor_ids_str = match.group(1)
+                if doctor_ids_str:
+                    doctor_ids = [int(id.strip()) for id in doctor_ids_str.split(',') if id.strip().isdigit()]
+
             Message.objects.create(
                 chat=chat,
                 content=message,
@@ -414,7 +388,7 @@ class ChatDetailView(APIView):
                 is_from_user=False
             )
             serializer.save()
-            return Response({"message": answer})
+            return Response({"message": ''.join(answer.split('\n')[:-2]), "doctors": doctor_ids})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(responses={204: None})

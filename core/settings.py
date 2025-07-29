@@ -125,7 +125,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # This is the directory where collectstatic will gather all static files
-STATIC_ROOT = BASE_DIR / 'staticfiles'  
+# STATIC_ROOT = BASE_DIR / 'staticfiles'  
 
 # Optional: include other dirs for development
 STATICFILES_DIRS = [
