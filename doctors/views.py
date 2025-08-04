@@ -197,8 +197,6 @@ class ChatListView(APIView):
                 f"User message: {message}\n"
                 f"Doctors available:\n{doctor_info}\n"
                 f"Nearest hospital: {nearest_hospital.name if nearest_hospital else 'N/A'}\n"
-                "Please recommend the most suitable doctor(s) for this user and answer the question. "
-                "Include a list of recommended doctor IDs at the end of your response in the format: [1, 2, 3] or []"
             )
 
             file_text = None
@@ -327,8 +325,6 @@ class ChatDetailView(APIView):
                 f"Previous chat history:\n{history}\n"
                 f"New user message: {message or '[file/image]'}\n"
                 f"Doctors available:\n{doctor_info}\n"
-                "Please recommend the most suitable doctor(s) for this user and answer the question. "
-                "Include a list of recommended doctor IDs at the end of your response in the format: [1, 2, 3] or []"
             )
 
             file_text = None
