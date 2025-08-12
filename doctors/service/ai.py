@@ -13,7 +13,7 @@
 # def generate_name(message: str) -> str:
 #     client = openai.OpenAI(api_key=OPENAI_API_KEY)
 #     response = client.chat.completions.create(
-#         model="gpt-4o-mini",
+#         model="gpt-5-mini",
 #         messages=[
 #             {"role": "system", "content": """You are an intelligent, friendly, and helpful assistant. Your main job is to talk to a patient, answer their question, and give advice using the context provided.
 
@@ -235,7 +235,7 @@
 #             print(f"Error processing file: {e}")
 
 #     response = client.chat.completions.create(
-#         model="gpt-4o-mini",
+#         model="gpt-5-mini",
 #         messages=[
 #             {"role": "system", "content": """You are an intelligent, friendly, and helpful assistant. Your main job is to talk to a patient, answer their question, and give advice using the context provided.
 
@@ -373,11 +373,10 @@ def generate_answer(prompt: str, image_path: Optional[str] = None, file_path: Op
             })
 
     # Choose the right model (vision support if image is provided)
-    model = "gpt-4o" if image_path else "gpt-4"
+    model = "gpt-5"
 
     response = client.chat.completions.create(model=model,
-    messages=messages,
-    temperature=0.5)
+    messages=messages)
 
     answer_text = response.choices[0].message.content
 
