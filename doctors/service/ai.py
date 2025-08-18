@@ -13,7 +13,7 @@
 # def generate_name(message: str) -> str:
 #     client = openai.OpenAI(api_key=OPENAI_API_KEY)
 #     response = client.chat.completions.create(
-#         model="gpt-5-mini",
+#         model="gpt-4o-mini",
 #         messages=[
 #             {"role": "system", "content": """You are an intelligent, friendly, and helpful assistant. Your main job is to talk to a patient, answer their question, and give advice using the context provided.
 
@@ -235,7 +235,7 @@
 #             print(f"Error processing file: {e}")
 
 #     response = client.chat.completions.create(
-#         model="gpt-5-mini",
+#         model="gpt-4o-mini",
 #         messages=[
 #             {"role": "system", "content": """You are an intelligent, friendly, and helpful assistant. Your main job is to talk to a patient, answer their question, and give advice using the context provided.
 
@@ -330,10 +330,17 @@ env.read_env()
 client = OpenAI(api_key=env.str("OPENAI_TOKEN"))
 
 
-def generate_answer(prompt: str, image_path: Optional[str] = None, file_path: Optional[str] = None) -> str:
+from typing import Optional, Tuple, Union
+import base64
+from django.core.files.uploadedfile import InMemoryUploadedFile
+
+def generate_answer(prompt: str, image_path: Optional[Union[str, InMemoryUploadedFile]] = None, file_path: Optional[Union[str, InMemoryUploadedFile]] = None) -> Tuple[str, list]:
     """
     Sends prompt and optional image/file to ChatGPT and extracts doctor IDs from the response.
-
+    Args:
+        prompt: The user prompt to send to the model.
+        image_path: Optional path to an image file or an InMemoryUploadedFile object.
+        file_path: Optional path to a file or an InMemoryUploadedFile object.
     Returns:
         Tuple of response text and list of doctor IDs (as integers)
     """
@@ -352,33 +359,43 @@ def generate_answer(prompt: str, image_path: Optional[str] = None, file_path: Op
     # Prepare file and image inputs
     files = []
     if file_path:
-        with open(file_path, "rb") as f:
-            file_upload = openai.files.create(file=f, purpose='assistants')
+        if isinstance(file_path, InMemoryUploadedFile):
+            # Directly read the file-like object
+            file_content = file_path.read()
+            file_upload = openai.files.create(file=file_content, purpose='assistants')
             files.append({"file_id": file_upload.id})
+        else:
+            # Assume file_path is a string path
+            with open(file_path, "rb") as f:
+                file_upload = openai.files.create(file=f, purpose='assistants')
+                files.append({"file_id": file_upload.id})
+
     if image_path:
-        with open(image_path, "rb") as img:
-            image_bytes = img.read()
-            messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": "data:image/jpeg;base64," + image_bytes.encode("base64").decode(),
-                            "detail": "auto"
-                        }
+        if isinstance(image_path, InMemoryUploadedFile):
+            # Directly read the image file-like object
+            image_bytes = image_path.read()
+        else:
+            # Assume image_path is a string path
+            with open(image_path, "rb") as img:
+                image_bytes = img.read()
+
+        messages.append({
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "data:image/jpeg;base64," + base64.b64encode(image_bytes).decode(),
+                        "detail": "auto"
                     }
-                ]
-            })
+                }
+            ]
+        })
 
     # Choose the right model (vision support if image is provided)
-    model = "gpt-5"
-
-    response = client.chat.completions.create(model=model,
-    messages=messages)
-
+    model = "gpt-4o" if image_path else "gpt-4"
+    response = client.chat.completions.create(model=model, messages=messages)
     answer_text = response.choices[0].message.content
-
 
     return answer_text
