@@ -4,12 +4,18 @@ from .models import Hospital, Doctor, Chat, Message
 class HospitalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Hospital
-        fields = ['id', 'name', 'latitude', 'longitude']
+        fields = ['id', 'name', 'latitude', 'longitude', 'image']
 
 class DoctorSerializer(serializers.ModelSerializer):
+    hospital = serializers.CharField(source='hospital.name', read_only=True)
+    latitude = serializers.CharField(source='hospital.latitude', read_only=True)
+    longitude = serializers.CharField(source='hospital.longitude', read_only=True)
+    phone_number = serializers.CharField(source='hospital.phone_number', read_only=True)
+
+
     class Meta:
         model = Doctor
-        fields = ['id', 'name', 'hospital', 'field', 'description']
+        fields = ['id', 'name', 'hospital', 'field', 'description', 'image', 'latitude', 'longitude', 'prize', 'phone_number']
 
 class MessageSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False, allow_null=True)

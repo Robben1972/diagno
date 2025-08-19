@@ -2,6 +2,8 @@ from django.db import models
 
 class Hospital(models.Model):
     name = models.CharField(max_length=255)
+    image = models.ImageField(upload_to='hospital_images/', default='hospital_images/default_hospital.png')
+    phone_number = models.CharField(max_length=20, blank=True)
     latitude = models.FloatField()
     longitude = models.FloatField()
 
@@ -13,6 +15,8 @@ class Doctor(models.Model):
     hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, related_name='doctors')
     field = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+    prize = models.BigIntegerField(default=100000)
+    image = models.ImageField(upload_to='doctor_images/', default='doctor_images/default_doctor.png')
 
     def __str__(self):
         return f"{self.name} ({self.field})"
