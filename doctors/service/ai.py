@@ -350,6 +350,7 @@ def generate_answer(prompt: str, image_path: Optional[Union[str, InMemoryUploade
             "content": (
                 "You are a helpful AI assistant working at a hospital.\n"
                 "Your task is to give advice to patient what to do in long and explained format\n"
+                "Answer to the user in the language which they send prompt in.\n"
                 "At the end of your message, return a list of doctor IDs who match the patient’s issue, in the format: [1, 2]"
             )
         },
