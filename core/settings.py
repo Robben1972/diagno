@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 from corsheaders.defaults import default_headers, default_methods
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,12 +26,14 @@ SECRET_KEY = 'django-insecure-6-b4be2t&g@b_!%4a*y*&_q6m@yh+gsjqzzj5kpz%!wmzp=-jh
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['api.diagnoai.uz', '91.99.232.34', 'diagnoai.uz', 'localhost']
+# ALLOWED_HOSTS = ['api.diagnoai.uz', '91.99.232.34', 'diagnoai.uz', 'localhost', ' 10.100.16.74']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'users',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -41,6 +44,12 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_spectacular',
     'doctors',
+    'parler',
+    'parler_rest',
+    'taggit',
+    'modeltranslation',
+    'model_utils',
+    'booking',
 ]
 
 MIDDLEWARE = [
@@ -138,7 +147,17 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=36500),  # Approx 100 years
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=36500),  # Approx 100 years
 }
 
 SPECTACULAR_SETTINGS = {
@@ -163,3 +182,22 @@ CORS_ALLOW_METHODS = list(default_methods) + [
     'HEAD',
     'TRACE',
 ]
+
+PARLER_LANGUAGES = {
+    None: (
+        {'code': 'en',},
+        {'code': 'uz',},
+        {'code': 'ru',},
+    ),
+    'default': {
+        'fallbacks': 'uz', 
+        'hide_untranslated': False,
+    }
+}
+LANGUAGE_CODE = 'uz'
+
+AUTH_USER_MODEL = "users.CustomUser"
+
+
+MODELTRANSLATION_DEFAULT_LANGUAGE = 'uz'
+MODELTRANSLATION_LANGUAGES = ('uz', 'en', 'ru')

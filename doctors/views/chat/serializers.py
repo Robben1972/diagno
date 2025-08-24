@@ -1,21 +1,5 @@
 from rest_framework import serializers
-from .models import Hospital, Doctor, Chat, Message
-
-class HospitalSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Hospital
-        fields = ['id', 'name', 'latitude', 'longitude', 'image']
-
-class DoctorSerializer(serializers.ModelSerializer):
-    hospital = serializers.CharField(source='hospital.name', read_only=True)
-    latitude = serializers.CharField(source='hospital.latitude', read_only=True)
-    longitude = serializers.CharField(source='hospital.longitude', read_only=True)
-    phone_number = serializers.CharField(source='hospital.phone_number', read_only=True)
-
-
-    class Meta:
-        model = Doctor
-        fields = ['id', 'name', 'hospital', 'field', 'description', 'image', 'latitude', 'longitude', 'prize', 'phone_number']
+from doctors.models import Chat, Message
 
 class MessageSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False, allow_null=True)
@@ -31,7 +15,7 @@ class ChatSerializer(serializers.ModelSerializer):
     message = serializers.CharField(required=False, write_only=True)
     latitude = serializers.FloatField(write_only=True, required=True)
     longitude = serializers.FloatField(write_only=True, required=True)
-    user_id = serializers.CharField(required=True)
+    user_id = serializers.CharField(required=False, write_only=True)  # Keep as is for compatibility
     messages = MessageSerializer(many=True, read_only=True)
 
     class Meta:
@@ -45,9 +29,11 @@ class ChatSerializer(serializers.ModelSerializer):
         message_content = validated_data.pop('message', None)
         image = validated_data.pop('image', None)
         file = validated_data.pop('file', None)
-        
-        chat = Chat.objects.create(**validated_data)
-        
+        # Remove user_id from validated_data if present
+        validated_data.pop('user_id', None)
+        # Use request.user (CustomUser instance) instead of request.user.id
+        user = self.context['request'].user
+        chat = Chat.objects.create(user_id=user, **validated_data)
         if message_content or image or file:
             Message.objects.create(
                 chat=chat,
@@ -56,5 +42,4 @@ class ChatSerializer(serializers.ModelSerializer):
                 file=file,
                 is_from_user=True
             )
-        
         return chat
