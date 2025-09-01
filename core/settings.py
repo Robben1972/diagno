@@ -26,8 +26,8 @@ SECRET_KEY = 'django-insecure-6-b4be2t&g@b_!%4a*y*&_q6m@yh+gsjqzzj5kpz%!wmzp=-jh
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-# ALLOWED_HOSTS = ['api.diagnoai.uz', '91.99.232.34', 'diagnoai.uz', 'localhost', ' 10.100.16.74']
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['api.diagnoai.uz', '91.99.232.34', 'diagnoai.uz', 'localhost', ' 10.100.16.74']
+# ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -201,3 +201,13 @@ AUTH_USER_MODEL = "users.CustomUser"
 
 MODELTRANSLATION_DEFAULT_LANGUAGE = 'uz'
 MODELTRANSLATION_LANGUAGES = ('uz', 'en', 'ru')
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://api.diagnoai.uz",
+    "https://diagnoai.uz",
+    "http://localhost",
+    "http://127.0.0.1",
+]
+
+
+CORS_ALLOW_CREDENTIALS = True

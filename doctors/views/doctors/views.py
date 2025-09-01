@@ -7,10 +7,13 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from django.conf import settings
 from collections import Counter
+from rest_framework.permissions import AllowAny
 
 class DoctorListView(generics.ListAPIView):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
+    permission_classes = [AllowAny]
+
 
     @extend_schema(
         parameters=[
@@ -55,6 +58,7 @@ class DoctorListView(generics.ListAPIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class DoctorFieldListView(generics.ListAPIView):
+    permission_classes = (AllowAny, )
     @extend_schema(
         parameters=[
             OpenApiParameter(
@@ -85,6 +89,8 @@ class DoctorFieldListView(generics.ListAPIView):
 class DoctorDetailView(generics.RetrieveAPIView):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
+    permission_classes = [AllowAny]
+
 
     @extend_schema(
         parameters=[
