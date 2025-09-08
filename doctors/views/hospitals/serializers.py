@@ -5,6 +5,7 @@ class HospitalSerializer(serializers.ModelSerializer):
     doctors = serializers.SerializerMethodField()
     departments = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
+    banner_image = serializers.SerializerMethodField()
 
     def get_doctors(self, obj):
         doctors = Doctor.objects.filter(hospital=obj)
@@ -18,6 +19,12 @@ class HospitalSerializer(serializers.ModelSerializer):
         if obj.image:
             return obj.image.url
         return None
+    
+    def get_banner_image(self, obj):
+        if obj.banner_image:
+            return obj.banner_image.url
+        return None
+    
     class Meta:
         model = Hospital
-        fields = ['id', 'name', 'image', 'phone_number', 'latitude', 'longitude', 'beds', 'doctors', 'description', 'departments']
+        fields = ['id', 'name', 'image', 'banner_image', 'phone_number', 'latitude', 'longitude', 'beds', 'doctors', 'description', 'departments']

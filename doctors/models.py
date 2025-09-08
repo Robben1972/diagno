@@ -8,6 +8,7 @@ class Hospital(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='hospitals')
     name = models.CharField(max_length=255)
     image = models.ImageField(upload_to='hospital_images/', default='hospital_images/default_hospital.png')
+    banner_image = models.ImageField(upload_to='hospital_images/', default='hospital_images/default_hospital.png')
     phone_number = models.CharField(max_length=20, blank=True)
     beds = models.IntegerField(default=0)
     description = models.TextField(blank=True)

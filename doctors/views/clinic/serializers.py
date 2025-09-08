@@ -35,7 +35,7 @@ class DoctorSerializer(TranslatableModelSerializer):
 
     class Meta:
         model = Doctor
-        fields = ['id', 'name', 'hospital', 'prize', 'image', 'tags', 'translations']
+        fields = ['id', 'name', 'hospital', 'prize', 'image','tags', 'translations']
 
 class DoctorSerializerCreate(TranslatableModelSerializer):
     field = serializers.CharField(required=False, allow_blank=True)
