@@ -25,7 +25,7 @@ class Doctor(TranslatableModel):
     )
     name = models.CharField(max_length=255)
     hospital = models.ForeignKey('Hospital', on_delete=models.CASCADE, related_name='doctors')
-    prize = models.BigIntegerField(default=100000)
+    prize = models.CharField(max_length=1000)
     image = models.ImageField(upload_to='doctor_images/', default='doctor_images/default_doctor.png')
     tags = TaggableManager(blank=True)
 

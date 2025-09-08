@@ -142,8 +142,10 @@ class ChatListView(APIView):
             chat = serializer.save()  # No user_id passed here, handled in serializer
             Message.objects.create(
                 chat=chat,
-                content=answer,
-                is_from_user=False
+                content=message,
+                image=image,
+                file=file,
+                is_from_user=True
             )
             return Response({"message": ''.join(answer.split('\n')[:-2]), "doctors": doctor_ids}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
