@@ -19,6 +19,12 @@ class DoctorSerializer(TranslatableModelSerializer):
     )
     hospital = HospitalSerializer(read_only=True)
     tags = TagListSerializerField(required=False)
+    image = serializers.SerializerMethodField()
+
+    def get_image(self, obj):
+        if obj.image:
+            return obj.image.url
+        return None
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -34,6 +40,12 @@ class DoctorSerializer(TranslatableModelSerializer):
 class DoctorSerializerCreate(TranslatableModelSerializer):
     field = serializers.CharField(required=False, allow_blank=True)
     description = serializers.CharField(required=False, allow_blank=True)
+    image = serializers.SerializerMethodField()
+
+    def get_image(self, obj):
+        if obj.image:
+            return obj.image.url
+        return None
 
     hospital = HospitalSerializer(read_only=True)
     tags = TagListSerializerField(required=False)

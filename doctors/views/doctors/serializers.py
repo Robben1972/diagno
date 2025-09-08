@@ -17,6 +17,7 @@ class DoctorSerializer(TranslatableModelSerializer):
     )
     hospital = HospitalSerializer(read_only=True)
     tags = TagListSerializerField(required=False)
+    image = serializers.SerializerMethodField()
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -28,3 +29,8 @@ class DoctorSerializer(TranslatableModelSerializer):
     class Meta:
         model = Doctor
         fields = ['id', 'name', 'hospital', 'prize', 'image', 'tags', 'translations']
+
+    def get_image(self, obj):
+        if obj.image:
+            return obj.image.url
+        return None

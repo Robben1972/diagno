@@ -2,16 +2,26 @@ from rest_framework import serializers
 from doctors.models import Chat, Message
 
 class MessageSerializer(serializers.ModelSerializer):
-    image = serializers.ImageField(required=False, allow_null=True)
-    file = serializers.FileField(required=False, allow_null=True)
+    image = serializers.SerializerMethodField()
+    file = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
         fields = ['id', 'content', 'image', 'file', 'is_from_user', 'created_at']
 
+    def get_image(self, obj):
+        if obj.image:
+            return obj.image.url
+        return None
+
+    def get_file(self, obj):
+        if obj.file:
+            return obj.file.url
+        return None
+
 class ChatSerializer(serializers.ModelSerializer):
-    image = serializers.ImageField(required=False, allow_null=True, write_only=True)
-    file = serializers.FileField(required=False, allow_null=True, write_only=True)
+    image = serializers.SerializerMethodField()
+    file = serializers.SerializerMethodField()
     message = serializers.CharField(required=False, write_only=True)
     latitude = serializers.FloatField(write_only=True, required=True)
     longitude = serializers.FloatField(write_only=True, required=True)
@@ -43,3 +53,13 @@ class ChatSerializer(serializers.ModelSerializer):
                 is_from_user=True
             )
         return chat
+    
+    def get_image(self, obj):
+        if obj.image:
+            return obj.image.url
+        return None
+
+    def get_file(self, obj):
+        if obj.file:
+            return obj.file.url
+        return None
