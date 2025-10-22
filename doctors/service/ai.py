@@ -1,389 +1,103 @@
-# import openai
-# from langchain_huggingface import HuggingFaceEmbeddings
-# from langchain_chroma import Chroma
-# from PIL import Image
-# from environs import Env
-
-# env = Env()
-# env.read_env()
-
-# OPENAI_API_KEY = env.str("OPENAI_TOKEN") 
-# openai.api_key = OPENAI_API_KEY
-
-# def generate_name(message: str) -> str:
-#     client = openai.OpenAI(api_key=OPENAI_API_KEY)
-#     response = client.chat.completions.create(
-#         model="gpt-4o-mini",
-#         messages=[
-#             {"role": "system", "content": """You are an intelligent, friendly, and helpful assistant. Your main job is to talk to a patient, answer their question, and give advice using the context provided.
-
-#             You should perform **TWO MAIN TASKS** in the question given language:
-
-#             ---
-
-#             **TASK 1: Answer the patient's question clearly and kindly**
-
-#             - Use the CONTEXT and CHAT HISTORY to understand the situation.
-#             - Speak in simple, non-technical language that any patient can understand.
-#             - Avoid using medical jargon, programming terms, or developer-style explanations.
-#             - Explain important ideas in a friendly and supportive way.
-#             - If the CONTEXT is not useful, you can ignore it and answer based on your general knowledge.
-
-#             ---
-
-#             **TASK 2: Suggest relevant medical specialists (if appropriate)**
-
-#             - If the question is about a medical condition, symptoms, or diagnosis, identify the types of medical specialists that might help the patient.
-#             - Use both the CONTEXT and the QUESTION to find clues about which specialists may be needed.
-
-#             - Return list of IDs of relevatn doctors if they are exist, this list should appear at the **very end of the response**, and nothing else should come after it.
-
-#             ---
-
-#             **Additional Important Rules**:
-
-#             - You are talking to a patient — not a developer, not a doctor. Always be caring and conversational.
-#             - Avoid statements like: “I cannot help,” or “I don’t have data.”
-#             - Do not ask the patient to provide more information — just do your best with what is given.
-#             - Make sure your final output includes only one answer, with no duplicates or repeated messages.
-#             - In the end return only list specialists IDS if it is truly relevant. Otherwise, return `[]`,  just put enter between context and list of IDs nothing else.
-
-#             ---
-#             YOU SHOULD JUST GIVE ADVICE AND SUGGESTIONS (DO NOT SPEAK ABOUT PROVIDEN OR NOT PROVIDEN DOCTORS IN THE CONTEXT), ONLY IN THE END RETURN THE LIST OF SPECIALISTS. 
-
-#             Here is the example of the response format (it is just an example, do not use it in your response, just use the this format and style):
-#             Question: "I have a headache and dizziness. What should I do?"
-#             Response: "Sorry to hear that you're dealing with a headache. Here are a few things you can try depending on the cause:
-
-#             ---
-
-#             ### 🧠 **General Tips**
-
-#             1. **Hydrate** – Drink a full glass of water. Dehydration is a common cause of headaches.
-#             2. **Rest your eyes** – If you've been looking at a screen, close your eyes and rest for 10–15 minutes.
-#             3. **Dark & quiet room** – Try to relax in a dark, quiet room. Light and noise can make headaches worse.
-#             4. **Cold or warm compress**:
-
-#             * **Forehead/temples** – Use a cold compress (ice pack wrapped in a cloth).
-#             * **Neck/shoulders** – Use a warm compress if you suspect muscle tension.
-
-#             ---
-
-#             ### 💊 **If You Use Medicine**
-
-#             * Take a pain reliever like **ibuprofen**, **paracetamol**, or **aspirin** (if it's safe for you).
-#             * Don’t overuse medication, as rebound headaches can occur.
-
-#             ---
-
-#             Would you like to describe what kind of headache it is (e.g. sharp, throbbing, on one side, tension in neck)? I can give more specific advice if you want.
-
-#             [1, 3, 4] If there is any relevant specialist otherwise return `[]`,  just put enter between context and list of IDs nothing else"
-
-#             NOT LIKE THIS:
-#             ""For a headache, it's best to consult a specialist who can assess the underlying causes. Since there is no specific neurologist listed, the most relevant doctor available is Shakhobiddin, a cardiologist at Davlat Poliklinikasi. While cardiologists primarily deal with heart-related issues, they may provide initial assessments or referrals for headache-related concerns.\n\nTherefore, I recommend seeing Shakhobiddin at Davlat Poliklinikasi, as it is the nearest facility. \n\nIf your headache persists or worsens, consider seeking a neurologist or another specialist for further evaluation."
-
-#             You should give advice as a doctor, and in the end just return the list of specialists that are relevant to the question, like this: [1, 2, 3] or [] if there is no relevant specialists. Do not use doctors in the context, just use the list of specialists that are relevant to the question."""},
-#             {"role": "user", "content": f"Give the small title for this message in one line:\n {message}"}
-#         ],
-#         max_tokens=50
-#     )
-#     return response.choices[0].message.content.replace("\n", "").replace("\r", "").replace("*", "")
-
-# def generate_rag_prompt(query, context, history=""):
-#     escaped_context = context.replace("'", "").replace('"', "").replace("\n", " ")
-#     escaped_history = history.replace("'", "").replace('"', "").replace("\n", " ")
-#     prompt = ("""
-#             Now, use the following inputs to create your response:
-
-#             QUESTION: {query}
-
-#             CONTEXT: {escaped_context}
-
-#             CHAT HISTORY: {escaped_history}
-
-#             Now respond to the patient’s question. Be helpful, clear, and include the list of relevant specialists at the end (if any), formatted like: [Specialist1, Specialist2, ...]
-#             If no specialists are applicable, return an empty list like this: []
-#             """
-#     ).format(query=query, escaped_context=escaped_context, escaped_history=escaped_history)
-#     return prompt
-
-# def get_relevant_context_from_db(query):
-#     context = ""
-#     embedding_function = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
-#     vector_db = Chroma(persist_directory="./healthy_documents", embedding_function=embedding_function)
-#     search_results = vector_db.similarity_search(query, k=6)
-#     for result in search_results:
-#         context += result.page_content + "\n"
-#     return context
-
-# def generate_answer(prompt, image_path=None, file_path=None):
-#     client = openai.OpenAI(api_key=OPENAI_API_KEY)
-#     content = [{"role": "user", "content": """You are an intelligent, friendly, and helpful assistant. Your main job is to talk to a patient, answer their question, and give advice using the context provided.
-
-#             You should perform **TWO MAIN TASKS** in the question given language:
-
-#             ---
-
-#             **TASK 1: Answer the patient's question clearly and kindly**
-
-#             - Use the CONTEXT and CHAT HISTORY to understand the situation.
-#             - Speak in simple, non-technical language that any patient can understand.
-#             - Avoid using medical jargon, programming terms, or developer-style explanations.
-#             - Explain important ideas in a friendly and supportive way.
-#             - If the CONTEXT is not useful, you can ignore it and answer based on your general knowledge.
-
-#             ---
-
-#             **TASK 2: Suggest relevant medical specialists (if appropriate)**
-
-#             - If the question is about a medical condition, symptoms, or diagnosis, identify the types of medical specialists that might help the patient.
-#             - Use both the CONTEXT and the QUESTION to find clues about which specialists may be needed.
-
-#             - Return list of IDs of relevatn doctors if they are exist, this list should appear at the **very end of the response**, and nothing else should come after it.
-
-#             ---
-
-#             **Additional Important Rules**:
-
-#             - You are talking to a patient — not a developer, not a doctor. Always be caring and conversational.
-#             - Avoid statements like: “I cannot help,” or “I don’t have data.”
-#             - Do not ask the patient to provide more information — just do your best with what is given.
-#             - Make sure your final output includes only one answer, with no duplicates or repeated messages.
-#             - In the end return only list specialists id if it is truly relevant. Otherwise, return `[]`,  just put enter between context and list of IDs nothing else.
-
-#             ---
-#             YOU SHOULD JUST GIVE ADVICE AND SUGGESTIONS (DO NOT SPEAK ABOUT PROVIDEN OR NOT PROVIDEN DOCTORS IN THE CONTEXT), ONLY IN THE END RETURN THE LIST OF SPECIALISTS. 
-
-#             Here is the example of the response format (it is just an example, do not use it in your response, just use the this format and style):
-#             Question: "I have a headache and dizziness. What should I do?"
-#             Response: "Sorry to hear that you're dealing with a headache. Here are a few things you can try depending on the cause:
-
-#             ---
-
-#             ### 🧠 **General Tips**
-
-#             1. **Hydrate** – Drink a full glass of water. Dehydration is a common cause of headaches.
-#             2. **Rest your eyes** – If you've been looking at a screen, close your eyes and rest for 10–15 minutes.
-#             3. **Dark & quiet room** – Try to relax in a dark, quiet room. Light and noise can make headaches worse.
-#             4. **Cold or warm compress**:
-
-#             * **Forehead/temples** – Use a cold compress (ice pack wrapped in a cloth).
-#             * **Neck/shoulders** – Use a warm compress if you suspect muscle tension.
-
-#             ---
-
-#             ### 💊 **If You Use Medicine**
-
-#             * Take a pain reliever like **ibuprofen**, **paracetamol**, or **aspirin** (if it's safe for you).
-#             * Don’t overuse medication, as rebound headaches can occur.
-
-#             ---
-
-#             Would you like to describe what kind of headache it is (e.g. sharp, throbbing, on one side, tension in neck)? I can give more specific advice if you want.
-
-#             [1, 3, 4] If there is any relevant specialist otherwise return `[]`,  just put enter between context and list of IDs nothing else"
-
-#             NOT LIKE THIS:
-#             ""For a headache, it's best to consult a specialist who can assess the underlying causes. Since there is no specific neurologist listed, the most relevant doctor available is Shakhobiddin, a cardiologist at Davlat Poliklinikasi. While cardiologists primarily deal with heart-related issues, they may provide initial assessments or referrals for headache-related concerns.\n\nTherefore, I recommend seeing Shakhobiddin at Davlat Poliklinikasi, as it is the nearest facility. \n\nIf your headache persists or worsens, consider seeking a neurologist or another specialist for further evaluation."
-
-#             You should give advice as a doctor, and in the end just return the list of specialists that are relevant to the question, like this: [1, 2, 3] or [] if there is no relevant specialists. Do not use doctors in the context, just use the list of specialists that are relevant to the question.""" + prompt}]
-
-#     if image_path:
-#         try:
-#             if hasattr(image_path, 'read'):
-#                 img = Image.open(image_path)
-#             else:
-#                 img = Image.open(str(image_path))
-#             # OpenAI API doesn't directly support PIL images; convert to base64 or skip for now
-#             print("Image processing not implemented for OpenAI API in this version.")
-#         except Exception as e:
-#             print(f"Error processing image: {e}")
-
-#     if file_path:
-#         try:
-#             name = getattr(file_path, 'name', str(file_path))
-#             if name.endswith('.txt'):
-#                 if hasattr(file_path, 'read'):
-#                     file_path.seek(0)
-#                     content[0]["content"] += 'Text extracted from user\'s file: ' + (file_path.read().decode('utf-8') if hasattr(file_path, 'decode') else file_path.read())
-#                 else:
-#                     with open(file_path, 'r', encoding='utf-8') as f:
-#                         content[0]["content"] += 'Text extracted from user\'s file: ' + f.read()
-#             elif name.endswith('.pdf'):
-#                 from PyPDF2 import PdfReader
-#                 if hasattr(file_path, 'read'):
-#                     file_path.seek(0)
-#                     reader = PdfReader(file_path)
-#                 else:
-#                     with open(file_path, 'rb') as f:
-#                         reader = PdfReader(f)
-#                 pdf_content = "\n".join(page.extract_text() for page in reader.pages if page.extract_text())
-#                 content.append({"role": "user", "content": pdf_content})
-#             elif name.endswith('.docx'):
-#                 from docx import Document
-#                 if hasattr(file_path, 'read'):
-#                     file_path.seek(0)
-#                     doc = Document(file_path)
-#                 else:
-#                     doc = Document(file_path)
-#                 doc_content = "\n".join(paragraph.text for paragraph in doc.paragraphs)
-#                 content.append({"role": "user", "content": doc_content})
-#             else:
-#                 return None
-#         except Exception as e:
-#             print(f"Error processing file: {e}")
-
-#     response = client.chat.completions.create(
-#         model="gpt-4o-mini",
-#         messages=[
-#             {"role": "system", "content": """You are an intelligent, friendly, and helpful assistant. Your main job is to talk to a patient, answer their question, and give advice using the context provided.
-
-#             You should perform **TWO MAIN TASKS** in the question given language:
-
-#             ---
-
-#             **TASK 1: Answer the patient's question clearly and kindly**
-
-#             - Use the CONTEXT and CHAT HISTORY to understand the situation.
-#             - Speak in simple, non-technical language that any patient can understand.
-#             - Avoid using medical jargon, programming terms, or developer-style explanations.
-#             - Explain important ideas in a friendly and supportive way.
-#             - If the CONTEXT is not useful, you can ignore it and answer based on your general knowledge.
-
-#             ---
-
-#             **TASK 2: Suggest relevant medical specialists (if appropriate)**
-
-#             - If the question is about a medical condition, symptoms, or diagnosis, identify the types of medical specialists that might help the patient.
-#             - Use both the CONTEXT and the QUESTION to find clues about which specialists may be needed.
-
-#             - Return list of IDs of relevatn doctors if they are exist, this list should appear at the **very end of the response**, and nothing else should come after it.
-
-#             ---
-
-#             **Additional Important Rules**:
-
-#             - You are talking to a patient — not a developer, not a doctor. Always be caring and conversational.
-#             - Avoid statements like: “I cannot help,” or “I don’t have data.”
-#             - Do not ask the patient to provide more information — just do your best with what is given.
-#             - Make sure your final output includes only one answer, with no duplicates or repeated messages.
-#             - In the end return only list specialists id if it is truly relevant. Otherwise, return `[]`,  just put enter between context and list of IDs nothing else.
-
-#             ---
-#             YOU SHOULD JUST GIVE ADVICE AND SUGGESTIONS (DO NOT SPEAK ABOUT PROVIDEN OR NOT PROVIDEN DOCTORS IN THE CONTEXT), ONLY IN THE END RETURN THE LIST OF SPECIALISTS. 
-
-#             Here is the example of the response format (it is just an example, do not use it in your response, just use the this format and style):
-#             Question: "I have a headache and dizziness. What should I do?"
-#             Response: "Sorry to hear that you're dealing with a headache. Here are a few things you can try depending on the cause:
-
-#             ---
-
-#             ### 🧠 **General Tips**
-
-#             1. **Hydrate** – Drink a full glass of water. Dehydration is a common cause of headaches.
-#             2. **Rest your eyes** – If you've been looking at a screen, close your eyes and rest for 10–15 minutes.
-#             3. **Dark & quiet room** – Try to relax in a dark, quiet room. Light and noise can make headaches worse.
-#             4. **Cold or warm compress**:
-
-#             * **Forehead/temples** – Use a cold compress (ice pack wrapped in a cloth).
-#             * **Neck/shoulders** – Use a warm compress if you suspect muscle tension.
-
-#             ---
-
-#             ### 💊 **If You Use Medicine**
-
-#             * Take a pain reliever like **ibuprofen**, **paracetamol**, or **aspirin** (if it's safe for you).
-#             * Don’t overuse medication, as rebound headaches can occur.
-
-#             ---
-
-#             Would you like to describe what kind of headache it is (e.g. sharp, throbbing, on one side, tension in neck)? I can give more specific advice if you want.
-
-#             [1, 3, 4] If there is any relevant specialist otherwise return `[]`,  just put enter between context and list of IDs nothing else"
-
-#             NOT LIKE THIS:
-#             ""For a headache, it's best to consult a specialist who can assess the underlying causes. Since there is no specific neurologist listed, the most relevant doctor available is Shakhobiddin, a cardiologist at Davlat Poliklinikasi. While cardiologists primarily deal with heart-related issues, they may provide initial assessments or referrals for headache-related concerns.\n\nTherefore, I recommend seeing Shakhobiddin at Davlat Poliklinikasi, as it is the nearest facility. \n\nIf your headache persists or worsens, consider seeking a neurologist or another specialist for further evaluation."
-
-#             You should give advice as a doctor, and in the end just return the list of specialists that are relevant to the question, like this: [1, 2, 3] or [] if there is no relevant specialists. Do not use doctors in the context, just use the list of specialists that are relevant to the question."""},
-#             *content
-#         ],
-#         max_tokens=10000
-#     )
-#     return response.choices[0].message.content
-
-# def get_answer(prompt: str, history: str, image_path=None, file_path=None):
-#     context = get_relevant_context_from_db(prompt)
-#     rag_prompt = generate_rag_prompt(query=prompt, context=context, history=history)
-#     answer = generate_answer(rag_prompt, image_path, file_path)
-#     return answer
-
-
+from typing import Optional, Union, Tuple
+import base64
+import re
+from langdetect import detect
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from openai import OpenAI
-import openai
-
-from typing import Optional, List
 from environs import Env
 
 env = Env()
 env.read_env()
+
 client = OpenAI(api_key=env.str("OPENAI_TOKEN"))
 
+SYSTEM_PROMPT = """
+You are a professional AI medical assistant working at a hospital.
+You help patients describe their symptoms and understand what to do next.
+You are not a doctor, but you can:
+- Give medically reasonable, safe advice.
+- Suggest which doctor(s) (by ID) the patient should contact.
+- Always respond in the same language that the user used. If requested in English, response should be English, if requested in Russian, response should be Russian, if requested in Uzbek, response should be in Uzbek and so on.
+- Be empathetic, polite, and clear.
+- Give clear and concise answers, in long with description. Try to use about 300-500 words.
 
-from typing import Optional, Tuple, Union
-import base64
-from django.core.files.uploadedfile import InMemoryUploadedFile
+Your response format must always follow this structure:
+1️⃣ **Advice for the patient:** Give a short explanation of the possible issue, steps to take, and when to see a doctor.
+2️⃣ **Doctor recommendation IDs:** At the very bottom, return doctor IDs in brackets, for example:
+[1, 2, 5]
 
-def generate_answer(prompt: str, image_path: Optional[Union[str, InMemoryUploadedFile]] = None, file_path: Optional[Union[str, InMemoryUploadedFile]] = None) -> Tuple[str, list]:
+Rules:
+- Never put doctor IDs inside the advice text.
+- If unsure, say to consult a doctor or nearby hospital.
+- Never use “translation” phrases; answer natively in the detected language.
+"""
+
+def parse_ai_response(answer: str) -> Tuple[str, list]:
     """
-    Sends prompt and optional image/file to ChatGPT and extracts doctor IDs from the response.
-    Args:
-        prompt: The user prompt to send to the model.
-        image_path: Optional path to an image file or an InMemoryUploadedFile object.
-        file_path: Optional path to a file or an InMemoryUploadedFile object.
-    Returns:
-        Tuple of response text and list of doctor IDs (as integers)
+    Extracts the main response text and list of doctor IDs.
     """
+    phrases_to_remove = [
+        r'1️⃣\s*\*\*Advice for the patient:\*\*\s*',
+        r'2️⃣\s*\*\*Doctor recommendation IDs:\*\*\s*'
+    ]
+    cleaned_answer = answer
+    for phrase in phrases_to_remove:
+        cleaned_answer = re.sub(phrase, '', cleaned_answer)
+    
+    # Extract doctor IDs
+    match = re.search(r'\[([\d,\s]+)\]', cleaned_answer)
+    if match:
+        doctor_ids_str = match.group(1)
+        doctor_ids = [int(x.strip()) for x in doctor_ids_str.split(',') if x.strip().isdigit()]
+        # Remove the doctor IDs part from the main response
+        main_response = re.sub(r'\n*\[[\d,\s]+\]\s*$', '', cleaned_answer).strip()
+    else:
+        doctor_ids = []
+        main_response = cleaned_answer.strip()
+    
+    return main_response, doctor_ids
+
+
+def generate_answer(
+    prompt: str,
+    image_path: Optional[Union[str, InMemoryUploadedFile]] = None,
+    file_text: Optional[str] = None
+) -> Tuple[str, list]:
+    """
+    Generates a structured medical response using OpenAI GPT model.
+    Automatically detects user's language and ensures proper formatting.
+    """
+    # Detect language for better consistency
+    try:
+        lang = detect(prompt)
+    except Exception:
+        lang = "en"
+
+    user_prompt = (
+        f"User message language: {lang}\n"
+        f"User message and context:\n{prompt}\n"
+    )
+
+    if file_text:
+        user_prompt += f"\nAttached file content:\n{file_text}\n"
+
     messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are a helpful AI assistant working at a hospital.\n"
-                "Your task is to give advice to patient what to do in long and explained format\n"
-                "Answer to the user in the language which they send prompt in.\n"
-                "At the end of your message, return a list of doctor IDs who match the patient’s issue, in the format: [1, 2]"
-            )
-        },
-        {"role": "user", "content": prompt}
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user_prompt}
     ]
 
-    # Prepare file and image inputs
-    files = []
-    if file_path:
-        if isinstance(file_path, InMemoryUploadedFile):
-            # Directly read the file-like object
-            file_content = file_path.read()
-            file_upload = openai.files.create(file=file_content, purpose='assistants')
-            files.append({"file_id": file_upload.id})
-        else:
-            # Assume file_path is a string path
-            with open(file_path, "rb") as f:
-                file_upload = openai.files.create(file=f, purpose='assistants')
-                files.append({"file_id": file_upload.id})
-
+    # Add image support if provided
     if image_path:
         if isinstance(image_path, InMemoryUploadedFile):
-            # Directly read the image file-like object
             image_bytes = image_path.read()
         else:
-            # Assume image_path is a string path
             with open(image_path, "rb") as img:
                 image_bytes = img.read()
 
         messages.append({
             "role": "user",
             "content": [
-                {"type": "text", "text": prompt},
+                {"type": "text", "text": user_prompt},
                 {
                     "type": "image_url",
                     "image_url": {
@@ -394,9 +108,12 @@ def generate_answer(prompt: str, image_path: Optional[Union[str, InMemoryUploade
             ]
         })
 
-    # Choose the right model (vision support if image is provided)
-    model = "gpt-4o" if image_path else "gpt-4"
-    response = client.chat.completions.create(model=model, messages=messages)
-    answer_text = response.choices[0].message.content
+    model = "gpt-4o" if image_path else "gpt-4o-mini"
 
-    return answer_text
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages
+    )
+
+    answer = response.choices[0].message.content
+    return parse_ai_response(answer)

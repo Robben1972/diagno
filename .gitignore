@@ -1,7 +1,6 @@
 /venv
 /venv/*
-# sqlite.db
-# *.sqlite3
+
 *.pyc
 __pycache__/
 *.pyo
@@ -11,3 +10,5 @@ __pycache__/
 *.egg
 .env
 /healthy_documents
+/media
+db.sqlite3

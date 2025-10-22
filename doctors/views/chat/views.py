@@ -129,25 +129,23 @@ class ChatListView(APIView):
                     doc_content = "\n".join(paragraph.text for paragraph in doc.paragraphs)
                     file_text = doc_content
             from doctors.service.ai import generate_answer
-            answer = generate_answer(prompt, image_file, file_text)
-            if not answer:
+            response_text, doctor_ids = generate_answer(prompt, image_file, file_text)
+            if not response_text:
                 return Response({"error": "AI could not generate an answer."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            # Extract doctor IDs from the AI response
-            doctor_ids = []
-            match = re.search(r'\[([\d,\s]*)\]', answer)
-            if match:
-                doctor_ids_str = match.group(1)
-                if doctor_ids_str:
-                    doctor_ids = [int(id.strip()) for id in doctor_ids_str.split(',') if id.strip().isdigit()]
-            chat = serializer.save()  # No user_id passed here, handled in serializer
+
+            chat = serializer.save()
+
             Message.objects.create(
                 chat=chat,
-                content=message,
-                image=image,
-                file=file,
-                is_from_user=True
+                content=response_text,
+                is_from_user=False
             )
-            return Response({"message": ''.join(answer.split('\n')[:-2]), "doctors": doctor_ids}, status=status.HTTP_201_CREATED)
+
+            return Response({
+                "id": chat.id,
+                "message": response_text,
+                "doctors": doctor_ids
+            }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ChatDetailView(APIView):
@@ -250,16 +248,10 @@ class ChatDetailView(APIView):
                     doc_content = "\n".join(paragraph.text for paragraph in doc.paragraphs)
                     file_text = doc_content
             from ...service.ai import generate_answer
-            answer = generate_answer(prompt, image_file, file_text)
-            if not answer:
+            response_text, doctor_ids = generate_answer(prompt, image_file, file_text)
+            if not response_text:
                 return Response({"error": "AI could not generate an answer."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            # Extract doctor IDs from the AI response
-            doctor_ids = []
-            match = re.search(r'\[([\d,\s]*)\]', answer)
-            if match:
-                doctor_ids_str = match.group(1)
-                if doctor_ids_str:
-                    doctor_ids = [int(id.strip()) for id in doctor_ids_str.split(',') if id.strip().isdigit()]
+           
             Message.objects.create(
                 chat=chat,
                 content=message,
@@ -267,13 +259,14 @@ class ChatDetailView(APIView):
                 file=file,
                 is_from_user=True
             )
+            serializer.save()
+
             Message.objects.create(
                 chat=chat,
-                content=answer,
+                content=response_text,
                 is_from_user=False
             )
-            serializer.save()
-            return Response({"message": ''.join(answer.split('\n')[:-2]), "doctors": doctor_ids})
+            return Response({"id": chat.id, "message": ''.join(response_text), "doctors": doctor_ids})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(responses={204: None})
