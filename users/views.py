@@ -49,7 +49,7 @@ class LoginView(APIView):
                     Q(email=email_or_phone) | Q(phone_number=email_or_phone)
                 )
                 # Manually check the password
-                if user.password == password:
+                if user.check_password(password):
                     refresh = RefreshToken.for_user(user)
                     return Response({
                         'token': str(refresh.access_token),
