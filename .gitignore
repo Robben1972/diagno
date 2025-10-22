@@ -12,3 +12,12 @@ __pycache__/
 /healthy_documents
 /media
 db.sqlite3
+/db.sqlite3
+.db.sqlite3
+.DS_Store
+.idea
+.vscode
+*.swp
+*.swo
+*.bak
+*.tmp
