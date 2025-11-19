@@ -46,7 +46,7 @@ def send_booking_status(email: str, date: str, time: str, doctor_name: str, lang
     try:
         with smtplib.SMTP('smtp.gmail.com', 587) as server:  # Replace with your SMTP server
             server.starttls()
-            server.login('bozorovshahob27@gmail.com', 'pjjgdflpnypzhcuu')  # Replace with your credentials
+            server.login('bozorovshahob27@gmail.com', 'fbzfrxmgthnawugb')  # Replace with your credentials
             server.send_message(msg)
         return True
     except Exception as e:

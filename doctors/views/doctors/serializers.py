@@ -7,6 +7,7 @@ from doctors.views.hospitals.serializers import HospitalSerializer
 
 class DoctorTranslationSerializer(serializers.Serializer):
     field = serializers.CharField(max_length=100, default='')
+    fieldDescription = serializers.CharField(allow_blank=True, default='')
     description = serializers.CharField(allow_blank=True, default='')
 
 

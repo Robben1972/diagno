@@ -11,12 +11,14 @@ def create_translations(sender, instance, created, **kwargs):
         # get original uzbek values
         activate('uz')
         field = instance.safe_translation_getter('field', default='')
+        fieldDescription = instance.safe_translation_getter('fieldDescription', default='')
         description = instance.safe_translation_getter('description', default='')
 
         # Russian translation
         if not instance.has_translation('ru'):
             instance.set_current_language('ru')
             instance.field = GoogleTranslator(source='uz', target='ru').translate(field) if field else ''
+            instance.fieldDescription = GoogleTranslator(source='uz', target='ru').translate(fieldDescription) if fieldDescription else ''
             instance.description = GoogleTranslator(source='uz', target='ru').translate(description) if description else ''
             instance.save()
 
@@ -24,5 +26,6 @@ def create_translations(sender, instance, created, **kwargs):
         if not instance.has_translation('en'):
             instance.set_current_language('en')
             instance.field = GoogleTranslator(source='uz', target='en').translate(field) if field else ''
+            instance.fieldDescription = GoogleTranslator(source='uz', target='en').translate(fieldDescription) if fieldDescription else ''
             instance.description = GoogleTranslator(source='uz', target='en').translate(description) if description else ''
             instance.save()

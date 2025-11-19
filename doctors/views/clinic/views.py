@@ -44,6 +44,7 @@ class MyDoctorsView(APIView):
                                 "items": {"type": "string"}
                             },
                             "field": {"type": "string"},
+                            "fieldDescription": {"type": "string"},
                             "description": {"type": "string"},
                         },
                         "required": ["name", "translations"]
@@ -61,6 +62,7 @@ class MyDoctorsView(APIView):
                         "prize": 200000,
                         "tags": ["cardiologist", "surgeon"],
                         "field": "Kardiolog",
+                        "fieldDescription": "Yurak kasalliklari mutaxassisi",
                         "description": "Yurak kasalliklari mutaxassisi"
                     },
                     "image": "(binary file)"

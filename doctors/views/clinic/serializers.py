@@ -57,6 +57,7 @@ class DoctorSerializerCreate(TranslatableModelSerializer):
 
     def create(self, validated_data):
         field = validated_data.pop("field", "")
+        fieldDescription = validated_data.pop("fieldDescription", "")
         description = validated_data.pop("description", "")
 
         doctor = Doctor.objects.create(**validated_data)
@@ -64,18 +65,21 @@ class DoctorSerializerCreate(TranslatableModelSerializer):
         # ✅ Save Uzbek translation by default
         with switch_language(doctor, "uz"):
             doctor.field = field
+            doctor.fieldDescription = fieldDescription
             doctor.description = description
             doctor.save()
         
         # ✅ Generate RU translation
         with switch_language(doctor, "ru"):
                 doctor.field = GoogleTranslator(source="uz", target="ru").translate(field) if field else ""
+                doctor.fieldDescription = GoogleTranslator(source="uz", target="ru").translate(fieldDescription) if fieldDescription else ""
                 doctor.description = GoogleTranslator(source="uz", target="ru").translate(description) if description else ""
                 doctor.save()
 
         # ✅ Generate EN translation
         with switch_language(doctor, "en"):
                 doctor.field = GoogleTranslator(source="uz", target="en").translate(field) if field else ""
+                doctor.fieldDescription = GoogleTranslator(source="uz", target="en").translate(fieldDescription) if fieldDescription else ""
                 doctor.description = GoogleTranslator(source="uz", target="en").translate(description) if description else ""
                 doctor.save()
 
@@ -86,5 +90,6 @@ class DoctorSerializerCreate(TranslatableModelSerializer):
         with switch_language(instance, "uz"):
             ret = super().to_representation(instance)
             ret["field"] = instance.field
+            ret["fieldDescription"] = instance.fieldDescription
             ret["description"] = instance.description
         return ret
