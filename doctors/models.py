@@ -51,6 +51,7 @@ class Chat(models.Model):
 class Message(models.Model):
     chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name='messages')
     content = models.TextField(blank=True, null=True)
+    voice = models.CharField(max_length=255, null=True, blank=True)
     image = models.ImageField(upload_to='chat_images/', null=True, blank=True)
     file = models.FileField(upload_to='chat_files/', null=True, blank=True)
     is_from_user = models.BooleanField(default=True)

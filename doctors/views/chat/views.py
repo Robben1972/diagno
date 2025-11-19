@@ -7,7 +7,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from math import radians, sin, cos, sqrt, atan2
 from rest_framework.parsers import MultiPartParser, FormParser
 from drf_spectacular.utils import OpenApiExample
-import re
+from doctors.service.tts import tts
 
 def calculate_distance(lat1, lon1, lat2, lon2):
     R = 6371  # Earth's radius in kilometers
@@ -132,19 +132,21 @@ class ChatListView(APIView):
             response_text, doctor_ids = generate_answer(prompt, image_file, file_text)
             if not response_text:
                 return Response({"error": "AI could not generate an answer."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+            audio = tts(response_text)
             chat = serializer.save()
 
             Message.objects.create(
                 chat=chat,
                 content=response_text,
+                voice=audio,
                 is_from_user=False
             )
 
             return Response({
                 "id": chat.id,
                 "message": response_text,
-                "doctors": doctor_ids
+                "doctors": doctor_ids,
+                'voice': audio 
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -251,7 +253,8 @@ class ChatDetailView(APIView):
             response_text, doctor_ids = generate_answer(prompt, image_file, file_text)
             if not response_text:
                 return Response({"error": "AI could not generate an answer."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-           
+            audio = tts(response_text)
+
             Message.objects.create(
                 chat=chat,
                 content=message,
@@ -262,11 +265,12 @@ class ChatDetailView(APIView):
             serializer.save()
 
             Message.objects.create(
+                voice=audio,
                 chat=chat,
                 content=response_text,
                 is_from_user=False
             )
-            return Response({"id": chat.id, "message": ''.join(response_text), "doctors": doctor_ids})
+            return Response({"id": chat.id, "message": ''.join(response_text), "doctors": doctor_ids, 'voice': audio})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(responses={204: None})

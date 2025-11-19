@@ -7,7 +7,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Message
-        fields = ['id', 'content', 'image', 'file', 'is_from_user', 'created_at']
+        fields = ['id', 'content', 'image', 'file', 'is_from_user', 'created_at', 'voice']
 
     def get_image(self, obj):
         if obj.image:
