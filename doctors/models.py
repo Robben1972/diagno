@@ -22,7 +22,7 @@ class Doctor(TranslatableModel):
     tracker = FieldTracker(fields=['name', 'prize', 'image'])
     translations = TranslatedFields(
         field=models.CharField(max_length=100, default=''),
-        filedDescription = models.TextField(blank=True, default=''),
+        fieldDescription = models.TextField(blank=True, default=''),
         description=models.TextField(blank=True, default='')
     )
     name = models.CharField(max_length=255)
