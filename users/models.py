@@ -8,11 +8,15 @@ class CustomUser(AbstractUser):
     first_name = models.CharField(max_length=30)
     last_name = models.CharField(max_length=30, null=True, blank=True)
     role = models.CharField(max_length=20, default='client')
+    paid = models.BooleanField(default=False)
 
     groups = models.ManyToManyField(Group, related_name="custom_user_set")
     user_permissions = models.ManyToManyField(
         Permission, related_name="custom_user_set"
     )
+
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    qrcode = models.ImageField(upload_to='qr_codes/', null=True, blank=True)
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
