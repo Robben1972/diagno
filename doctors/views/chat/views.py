@@ -281,3 +281,41 @@ class ChatDetailView(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
         chat.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CreateChatWithDoctorView(APIView):
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='doctor_id',
+                location=OpenApiParameter.PATH,
+                description='ID of the doctor to create chat with',
+                required=True,
+                type=int
+            )
+        ],
+        responses=ChatSerializer,
+        description="Create a chat with a specific doctor using only doctor ID. Uses doctor's hospital coordinates."
+    )
+    def post(self, request, doctor_id):
+        if not request.user.is_authenticated:
+            return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        try:
+            doctor = Doctor.objects.get(pk=doctor_id)
+        except Doctor.DoesNotExist:
+            return Response({"error": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Use hospital's coordinates
+        hospital = doctor.hospital
+        
+        # Create chat with doctor
+        chat = Chat.objects.create(
+            user_id=request.user,
+            doctor=doctor,
+            latitude=hospital.latitude,
+            longitude=hospital.longitude
+        )
+        
+        serializer = ChatSerializer(chat)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

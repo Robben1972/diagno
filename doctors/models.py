@@ -45,6 +45,8 @@ class Chat(models.Model):
     longitude = models.FloatField()
     latitude = models.FloatField()
 
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
+
     def __str__(self):
         return f"Chat {self.id} for User {self.user_id}"
 
